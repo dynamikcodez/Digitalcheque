@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getSessionUser } from '../lib/supabase/server';
 import { prisma } from '../lib/db';
 import SignInForm from '../components/SignInForm';
+import AuthHashHandler from '../components/AuthHashHandler';
 import { ShieldCheck, Zap, RefreshCw, Smartphone, Loader2 } from 'lucide-react';
 
 export default async function LandingPage() {
@@ -14,6 +15,7 @@ export default async function LandingPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
+      <AuthHashHandler />
       {/* Mini Header */}
       <header className="border-b border-border bg-card/45 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
