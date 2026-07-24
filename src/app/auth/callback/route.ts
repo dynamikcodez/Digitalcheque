@@ -71,6 +71,7 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}${next}`);
       } else {
         console.error('Auth code exchange failed:', error);
+        return NextResponse.redirect(`${origin}?error=Auth exchange failed: ${encodeURIComponent(error.message || 'unknown')}`);
       }
     } catch (err: any) {
       console.error('Unhandled callback error:', err);
@@ -78,5 +79,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}?error=Could not authenticate user`);
+  return NextResponse.redirect(`${origin}?error=Missing authentication code`);
 }
