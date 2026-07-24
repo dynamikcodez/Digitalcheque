@@ -14,6 +14,9 @@ if (process.env.NODE_ENV === 'production') {
     connectionString: process.env.DATABASE_URL,
     ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
   });
+  pool.on('error', (err) => {
+    console.error('Unexpected error on inactive database pool client (prod):', err);
+  });
   const adapter = new PrismaPg(pool);
   prisma = new PrismaClient({ adapter });
 } else {
@@ -21,6 +24,9 @@ if (process.env.NODE_ENV === 'production') {
     const pool = new pg.Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
+    });
+    pool.on('error', (err) => {
+      console.error('Unexpected error on inactive database pool client (dev):', err);
     });
     const adapter = new PrismaPg(pool);
     globalForPrisma.prisma = new PrismaClient({ adapter });
