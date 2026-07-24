@@ -56,15 +56,25 @@ export async function GET(request: Request) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await ensureUserExists(user);
+    try {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          try {
+            await ensureUserExists(user);
+          } catch (dbError: any) {
+            console.error('Database user sync failed:', dbError);
+            return NextResponse.redirect(`${origin}?error=Database sync error: ${encodeURIComponent(dbError.message || 'unknown')}`);
+          }
+        }
+        return NextResponse.redirect(`${origin}${next}`);
+      } else {
+        console.error('Auth code exchange failed:', error);
       }
-      return NextResponse.redirect(`${origin}${next}`);
-    } else {
-      console.error('Auth code exchange failed:', error);
+    } catch (err: any) {
+      console.error('Unhandled callback error:', err);
+      return NextResponse.redirect(`${origin}?error=Unhandled auth error: ${encodeURIComponent(err.message || 'unknown')}`);
     }
   }
 
