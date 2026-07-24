@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fcfbfa; /* warm off-white */
+  --foreground: #1c1d1f; /* soft charcoal */
+  --card: #ffffff;
+  --card-foreground: #1c1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1c1d1f;
+  --primary: #0b7a4c; /* emerald/forest green */
+  --primary-foreground: #ffffff;
+  --secondary: #f4f3ef; /* warm sand */
+  --secondary-foreground: #1c1d1f;
+  --muted: #f4f3ef;
+  --muted-foreground: #5e6268;
+  --accent: #d2e8db; /* soft green tint */
+  --accent-foreground: #0b7a4c;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e8e6e0;
+  --input: #e8e6e0;
+  --ring: #0b7a4c;
+  --radius: 12px;
+}
+
+.dark {
+  --background: #111213;
+  --foreground: #fcfbfa;
+  --card: #191a1c;
+  --card-foreground: #fcfbfa;
+  --popover: #191a1c;
+  --popover-foreground: #fcfbfa;
+  --primary: #0da867; /* lighter green for dark mode */
+  --primary-foreground: #111213;
+  --secondary: #232528;
+  --secondary-foreground: #fcfbfa;
+  --muted: #232528;
+  --muted-foreground: #a0a5ad;
+  --accent: #19382b;
+  --accent-foreground: #0da867;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #2d3035;
+  --input: #2d3035;
+  --ring: #0da867;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --border-radius-lg: var(--radius);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom interactive animations and glassmorphism helpers */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .glass {
+  background: rgba(25, 26, 28, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.button-scale {
+  transition: transform 0.1s ease-in-out;
+}
+.button-scale:active {
+  transform: scale(0.97);
 }

@@ -1,0 +1,143 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated"
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  phone     String?
+  role      String   @default("user")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cheques   Cheque[] @relation("SenderCheques")
+
+  @@map("users")
+}
+
+model Cheque {
+  id                    String   @id @default(uuid())
+  senderUserId          String   @map("sender_user_id")
+  sender                User     @relation("SenderCheques", fields: [senderUserId], references: [id])
+  senderName            String   @map("sender_name")
+  senderContact         String   @map("sender_contact")
+  recipientPhone        String?  @map("recipient_phone")
+  recipientEmail        String   @map("recipient_email")
+  amount                Float
+  currency              String   @default("NGN")
+  feeAmount             Float    @map("fee_amount")
+  feePercentageApplied  Float    @map("fee_percentage_applied")
+  feeFixedApplied       Float    @map("fee_fixed_applied")
+  totalCharged          Float    @map("total_charged")
+  message               String?
+  expiryDate            DateTime? @map("expiry_date")
+  status                String   @default("draft") // draft | funded | reserved | recipient_notified | recipient_verified | destination_selected | settled | expired | cancelled
+  claimToken            String   @unique @default(uuid()) @map("claim_token")
+  paystackChargeRef     String?  @map("paystack_charge_reference")
+  createdAt             DateTime @default(now()) @map("created_at")
+  fundedAt              DateTime? @map("funded_at")
+  claimedAt             DateTime? @map("claimed_at")
+  settledAt             DateTime? @map("settled_at")
+
+  otpVerifications    OtpVerification[]
+  payoutDestinations  PayoutDestination[]
+  transfers           Transfer[]
+  notifications       NotificationsLog[]
+  ledger              TransactionsLedger[]
+
+  @@map("cheques")
+}
+
+model OtpVerification {
+  id          String    @id @default(uuid())
+  chequeId    String    @map("cheque_id")
+  cheque      Cheque    @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+  contact     String
+  otpCodeHash String    @map("otp_code_hash")
+  expiresAt   DateTime  @map("expires_at")
+  verifiedAt  DateTime? @map("verified_at")
+  attempts    Int       @default(0)
+
+  @@map("otp_verifications")
+}
+
+model PayoutDestination {
+  id                    String @id @default(uuid())
+  chequeId              String @map("cheque_id")
+  cheque                Cheque @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+  method                String @default("bank") // bank | wallet | store_credit
+  accountNumber         String @map("account_number")
+  accountName           String @map("account_name")
+  bankCode              String @map("bank_code")
+  paystackRecipientCode String @map("paystack_recipient_code")
+
+  @@map("payout_destinations")
+}
+
+model Transfer {
+  id                    String    @id @default(uuid())
+  chequeId              String    @map("cheque_id")
+  cheque                Cheque    @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+  paystackTransferCode  String    @map("paystack_transfer_code")
+  status                String    // pending | success | failed
+  amount                Float
+  fee                   Float
+  createdAt             DateTime  @default(now()) @map("created_at")
+  completedAt           DateTime? @map("completed_at")
+
+  @@map("transfers")
+}
+
+model WebhookEvent {
+  id         String   @id // Paystack event ID
+  eventType  String   @map("event_type")
+  rawPayload Json     @map("raw_payload")
+  processed  Boolean  @default(false)
+  receivedAt DateTime @default(now()) @map("received_at")
+
+  @@map("webhook_events")
+}
+
+model NotificationsLog {
+  id               String   @id @default(uuid())
+  chequeId         String   @map("cheque_id")
+  cheque           Cheque   @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+  recipientContact String   @map("recipient_contact")
+  channel          String   // email | sms
+  type             String   // claimed | settled | expiring
+  sentAt           DateTime @default(now()) @map("sent_at")
+  status           String   // sent | failed
+
+  @@map("notifications_log")
+}
+
+model PlatformSettings {
+  id              String   @id @default("default")
+  feePercentage   Float    @default(3.0) @map("fee_percentage")
+  feeFixed        Float    @default(200.0) @map("fee_fixed")
+  currencyDefault String   @default("NGN") @map("currency_default")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+model TransactionsLedger {
+  id                             String    @id @default(uuid())
+  chequeId                       String    @map("cheque_id")
+  cheque                         Cheque    @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+  paystackCollectionFeeEstimate  Float     @map("paystack_collection_fee_estimate")
+  paystackCollectionFeeActual    Float?    @map("paystack_collection_fee_actual")
+  paystackTransferFeeEstimate    Float     @map("paystack_transfer_fee_estimate")
+  paystackTransferFeeActual      Float?    @map("paystack_transfer_fee_actual")
+  stampDutyActual                Float?    @map("stamp_duty_actual")
+  platformFeeCollected           Float     @map("platform_fee_collected")
+  platformNetMargin              Float?    @map("platform_net_margin")
+  createdAt                      DateTime  @default(now()) @map("created_at")
+  reconciledAt                   DateTime? @map("reconciled_at")
+
+  @@map("transactions_ledger")
+}
