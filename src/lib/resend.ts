@@ -4,7 +4,7 @@ import { prisma } from './db';
 const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder_key');
 
 // Default "from" email address (in test mode, Resend permits sending only to your registered account or from onboarding@resend.dev)
-const EMAIL_FROM = 'onboarding@resend.dev';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 
 async function logNotification(
   chequeId: string,
