@@ -7,13 +7,21 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined 
 
 let prisma: PrismaClient;
 
+const isSupabase = process.env.DATABASE_URL?.includes('supabase') || process.env.DATABASE_URL?.includes('pooler');
+
 if (process.env.NODE_ENV === 'production') {
-  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
+  });
   const adapter = new PrismaPg(pool);
   prisma = new PrismaClient({ adapter });
 } else {
   if (!globalForPrisma.prisma) {
-    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const pool = new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
+    });
     const adapter = new PrismaPg(pool);
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
