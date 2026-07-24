@@ -63,6 +63,8 @@ export async function GET(request: Request) {
         await ensureUserExists(user);
       }
       return NextResponse.redirect(`${origin}${next}`);
+    } else {
+      console.error('Auth code exchange failed:', error);
     }
   }
 
