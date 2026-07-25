@@ -39,8 +39,12 @@ export async function proxy(request: NextRequest) {
       email: mockEmail,
     };
   } else {
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-    user = supabaseUser;
+    try {
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      user = supabaseUser;
+    } catch (err) {
+      console.error('Middleware authentication check failed:', err);
+    }
   }
 
   const url = request.nextUrl.clone();
