@@ -1,5 +1,9 @@
 # Digital Cheque
 
+[![Deploy with Vercel](https://vercel.com/button)](https://digitalcheque.vercel.app)
+
+**Live Deployment**: [https://digitalcheque.vercel.app](https://digitalcheque.vercel.app)
+
 Digital Cheque is a fintech web application built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, and **Prisma** + **PostgreSQL**. 
 
 It allows users to send money to anyone using only the recipient's email or phone number. The recipient receives a secure claim link, verifies their identity via a 6-digit OTP code sent using **Resend**, and claims the funds directly to their bank account using **Paystack**.
