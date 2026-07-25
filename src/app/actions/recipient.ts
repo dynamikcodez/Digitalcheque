@@ -203,6 +203,22 @@ export async function resolveBankAccount(accountNumber: string, bankCode: string
     return { success: true, data };
   } catch (error: any) {
     console.error('Failed to resolve account number:', error);
+    
+    // Developer Sandbox Bypass for Paystack Test Mode Limits
+    const isTestKey = process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_');
+    const isLimitError = error.message?.toLowerCase().includes('limit') || error.message?.toLowerCase().includes('exceeded');
+    
+    if (isTestKey && isLimitError) {
+      console.warn('Paystack resolve limit hit in Test Mode. Bypassing and returning mock name.');
+      return {
+        success: true,
+        data: {
+          account_number: accountNumber,
+          account_name: 'Demo Test Account (Sandbox Bypassed)',
+        },
+      };
+    }
+
     return { success: false, error: error.message || 'Invalid account number or bank code' };
   }
 }
