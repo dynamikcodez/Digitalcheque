@@ -12,10 +12,11 @@ interface PageProps {
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
-  const supabaseUser = await getSessionUser();
-  if (!supabaseUser) {
-    redirect('/');
-  }
+  try {
+    const supabaseUser = await getSessionUser();
+    if (!supabaseUser) {
+      redirect('/');
+    }
 
   // Ensure user is synced
   const dbUser = await ensureUserExists(supabaseUser);
@@ -231,6 +232,29 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       </main>
     </div>
   );
+  } catch (error: any) {
+    console.error('Dashboard page crashed:', error);
+    if (error.digest?.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-foreground">
+        <div className="max-w-md w-full text-center space-y-4 p-8 rounded-xl border border-border bg-card">
+          <h1 className="text-xl font-bold text-red-500 dark:text-red-400">Dashboard Error</h1>
+          <p className="text-sm text-muted-foreground">A database or connection error occurred while loading your dashboard.</p>
+          <div className="p-4 bg-muted rounded-lg text-left border border-border">
+            <code className="text-xs text-red-500 font-mono break-all block">{error.message || String(error)}</code>
+          </div>
+          <Link 
+            href="/dashboard"
+            className="block w-full py-2 px-4 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 text-center transition-colors"
+          >
+            Retry
+          </Link>
+        </div>
+      </div>
+    );
+  }
 }
 
 // Redirect helper
