@@ -49,54 +49,59 @@ export async function getChequeByToken(token: string) {
  * Generates a 6-digit OTP code, hashes it, saves it to the database, and sends it via Resend
  */
 export async function sendClaimOtp(token: string) {
-  const cheque = await prisma.cheque.findUnique({
-    where: { claimToken: token },
-  });
+  try {
+    const cheque = await prisma.cheque.findUnique({
+      where: { claimToken: token },
+    });
 
-  if (!cheque) {
-    throw new Error('Cheque not found');
+    if (!cheque) {
+      return { success: false, error: 'Cheque not found' };
+    }
+
+    // Validate cheque status
+    if (
+      cheque.status !== 'recipient_notified' &&
+      cheque.status !== 'recipient_verified' &&
+      cheque.status !== 'destination_selected'
+    ) {
+      return { success: false, error: `Cheque is currently in status: ${cheque.status} and cannot be verified` };
+    }
+
+    // Generate 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = hashOtp(otpCode);
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
+
+    // Write OTP to DB
+    await prisma.otpVerification.create({
+      data: {
+        chequeId: cheque.id,
+        contact: cheque.recipientEmail,
+        otpCodeHash: otpHash,
+        expiresAt,
+        attempts: 0,
+      },
+    });
+
+    // Send email via Resend
+    console.log(`Sending claim OTP email to recipient: ${cheque.recipientEmail}`);
+    const result = await emailService.sendOtp(
+      cheque.id,
+      cheque.recipientEmail,
+      cheque.senderName,
+      cheque.amount,
+      otpCode
+    );
+
+    if (!result) {
+      return { success: false, error: 'Failed to send verification code email via Resend' };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send OTP:', err);
+    return { success: false, error: err.message || 'Failed to send verification code. Please try again.' };
   }
-
-  // Validate cheque status
-  if (
-    cheque.status !== 'recipient_notified' &&
-    cheque.status !== 'recipient_verified' &&
-    cheque.status !== 'destination_selected'
-  ) {
-    throw new Error(`Cheque is currently in status: ${cheque.status} and cannot be verified`);
-  }
-
-  // Generate 6-digit OTP
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpHash = hashOtp(otpCode);
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
-
-  // Write OTP to DB
-  await prisma.otpVerification.create({
-    data: {
-      chequeId: cheque.id,
-      contact: cheque.recipientEmail,
-      otpCodeHash: otpHash,
-      expiresAt,
-      attempts: 0,
-    },
-  });
-
-  // Send email via Resend
-  console.log(`Sending claim OTP email to recipient: ${cheque.recipientEmail}`);
-  const result = await emailService.sendOtp(
-    cheque.id,
-    cheque.recipientEmail,
-    cheque.senderName,
-    cheque.amount,
-    otpCode
-  );
-
-  if (!result) {
-    throw new Error('Failed to send verification code. Please try again.');
-  }
-
-  return { success: true };
 }
 
 /**
@@ -104,72 +109,77 @@ export async function sendClaimOtp(token: string) {
  * and triggers notification to sender that claim process has started.
  */
 export async function verifyClaimOtp(token: string, otpCode: string) {
-  const cheque = await prisma.cheque.findUnique({
-    where: { claimToken: token },
-  });
-
-  if (!cheque) {
-    throw new Error('Cheque not found');
-  }
-
-  // Fetch the latest OTP attempt for this cheque
-  const otp = await prisma.otpVerification.findFirst({
-    where: {
-      chequeId: cheque.id,
-      verifiedAt: null,
-      expiresAt: { gt: new Date() },
-    },
-    orderBy: { expiresAt: 'desc' },
-  });
-
-  if (!otp) {
-    throw new Error('Verification code has expired or is invalid. Please request a new code.');
-  }
-
-  if (otp.attempts >= 5) {
-    throw new Error('Too many incorrect attempts. Please request a new verification code.');
-  }
-
-  // Increment attempts
-  await prisma.otpVerification.update({
-    where: { id: otp.id },
-    data: { attempts: otp.attempts + 1 },
-  });
-
-  const codeHash = hashOtp(otpCode);
-
-  if (otp.otpCodeHash !== codeHash) {
-    throw new Error('Incorrect verification code');
-  }
-
-  // Match! Complete verification inside a transaction
-  await prisma.$transaction(async (tx) => {
-    // Mark OTP verified
-    await tx.otpVerification.update({
-      where: { id: otp.id },
-      data: { verifiedAt: new Date() },
+  try {
+    const cheque = await prisma.cheque.findUnique({
+      where: { claimToken: token },
     });
 
-    // Update cheque status
-    await tx.cheque.update({
-      where: { id: cheque.id },
-      data: {
-        status: 'recipient_verified',
-        claimedAt: new Date(),
+    if (!cheque) {
+      return { success: false, error: 'Cheque not found' };
+    }
+
+    // Fetch the latest OTP attempt for this cheque
+    const otp = await prisma.otpVerification.findFirst({
+      where: {
+        chequeId: cheque.id,
+        verifiedAt: null,
+        expiresAt: { gt: new Date() },
       },
+      orderBy: { expiresAt: 'desc' },
     });
-  });
 
-  // Notify sender immediately that claim has started
-  console.log(`Sending claim started notification email to sender: ${cheque.senderContact}`);
-  await emailService.sendClaimedNotification(
-    cheque.id,
-    cheque.senderContact,
-    cheque.recipientEmail, // Recipient identifier
-    cheque.amount
-  );
+    if (!otp) {
+      return { success: false, error: 'Verification code has expired or is invalid. Please request a new code.' };
+    }
 
-  return { success: true };
+    if (otp.attempts >= 5) {
+      return { success: false, error: 'Too many incorrect attempts. Please request a new verification code.' };
+    }
+
+    // Increment attempts
+    await prisma.otpVerification.update({
+      where: { id: otp.id },
+      data: { attempts: otp.attempts + 1 },
+    });
+
+    const codeHash = hashOtp(otpCode);
+
+    if (otp.otpCodeHash !== codeHash) {
+      return { success: false, error: 'Incorrect verification code' };
+    }
+
+    // Match! Complete verification inside a transaction
+    await prisma.$transaction(async (tx) => {
+      // Mark OTP verified
+      await tx.otpVerification.update({
+        where: { id: otp.id },
+        data: { verifiedAt: new Date() },
+      });
+
+      // Update cheque status
+      await tx.cheque.update({
+        where: { id: cheque.id },
+        data: {
+          status: 'recipient_verified',
+          claimedAt: new Date(),
+        },
+      });
+    });
+
+    // Notify sender immediately that claim has started
+    console.log(`Sending claim started notification email to sender: ${cheque.senderContact}`);
+    await emailService.sendClaimedNotification(
+      cheque.id,
+      cheque.senderContact,
+      cheque.recipientEmail,
+      cheque.amount
+    );
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to verify OTP:', err);
+    return { success: false, error: err.message || 'Verification failed. Please try again.' };
+  }
 }
 
 /**
@@ -189,10 +199,11 @@ export async function getPayoutBanks() {
  */
 export async function resolveBankAccount(accountNumber: string, bankCode: string) {
   try {
-    return await paystack.resolveAccountNumber(accountNumber, bankCode);
-  } catch (error) {
+    const data = await paystack.resolveAccountNumber(accountNumber, bankCode);
+    return { success: true, data };
+  } catch (error: any) {
     console.error('Failed to resolve account number:', error);
-    throw new Error('Invalid account number or bank code');
+    return { success: false, error: error.message || 'Invalid account number or bank code' };
   }
 }
 
@@ -206,20 +217,20 @@ export async function processPayout(
   bankCode: string,
   accountName: string
 ) {
-  const cheque = await prisma.cheque.findUnique({
-    where: { claimToken: token },
-  });
-
-  if (!cheque) {
-    throw new Error('Cheque not found');
-  }
-
-  // Payout can only be processed if recipient is verified
-  if (cheque.status !== 'recipient_verified' && cheque.status !== 'destination_selected') {
-    throw new Error('You must verify your identity before choosing a payout destination');
-  }
-
   try {
+    const cheque = await prisma.cheque.findUnique({
+      where: { claimToken: token },
+    });
+
+    if (!cheque) {
+      return { success: false, error: 'Cheque not found' };
+    }
+
+    // Payout can only be processed if recipient is verified
+    if (cheque.status !== 'recipient_verified' && cheque.status !== 'destination_selected') {
+      return { success: false, error: 'You must verify your identity before choosing a payout destination' };
+    }
+
     // 1. Create Paystack Transfer Recipient
     const recipient = await paystack.createTransferRecipient(
       accountName,
@@ -250,7 +261,7 @@ export async function processPayout(
       });
 
       // 3. Trigger Paystack Initiate Transfer
-      const transferRef = cheque.id; // Unique reference tied to cheque ID
+      const transferRef = cheque.id;
       const paystackTransfer = await paystack.initiateTransfer(
         recipient.recipient_code,
         cheque.amount,
@@ -265,7 +276,7 @@ export async function processPayout(
           paystackTransferCode: paystackTransfer.transfer_code,
           status: 'pending',
           amount: cheque.amount,
-          fee: 0, // actual fee will be reconciled via webhook
+          fee: 0,
         },
       });
 
@@ -275,6 +286,6 @@ export async function processPayout(
     return { success: true, transferCode: transferResult.paystackTransferCode };
   } catch (error: any) {
     console.error('Error processing payout:', error);
-    throw new Error(error.message || 'Failed to process payout transfer. Please try again.');
+    return { success: false, error: error.message || 'Failed to process payout transfer. Please try again.' };
   }
 }

@@ -39,10 +39,14 @@ export default function PayoutDestinationForm({ token, amount, currency, banks }
         setResolvedName('');
         try {
           const res = await resolveBankAccount(accountNumber, selectedBankCode);
-          setResolvedName(res.account_name);
+          if (res.success && res.data) {
+            setResolvedName(res.data.account_name);
+          } else {
+            setResolveError(res.error || 'Could not verify account name. Please check details.');
+          }
         } catch (err: any) {
           console.error(err);
-          setResolveError(err.message || 'Could not verify account name. Please check details.');
+          setResolveError('Network error resolving bank account. Please try again.');
         } finally {
           setResolving(false);
         }
@@ -67,11 +71,15 @@ export default function PayoutDestinationForm({ token, amount, currency, banks }
     setError('');
 
     try {
-      await processPayout(token, accountNumber, selectedBankCode, resolvedName);
-      router.push(`/claim/${token}/success`);
+      const res = await processPayout(token, accountNumber, selectedBankCode, resolvedName);
+      if (res.success) {
+        router.push(`/claim/${token}/success`);
+      } else {
+        setError(res.error || 'Payout settlement failed. Please try again or contact support.');
+      }
     } catch (err: any) {
       console.error('Payout failed:', err);
-      setError(err.message || 'Payout settlement failed. Please try again or contact support.');
+      setError('Network error processing payout. Please try again.');
     } finally {
       setLoading(false);
     }

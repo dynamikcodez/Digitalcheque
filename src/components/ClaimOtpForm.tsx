@@ -42,13 +42,17 @@ export default function ClaimOtpForm({ token, cheque }: ClaimOtpFormProps) {
     setError('');
 
     try {
-      await sendClaimOtp(token);
-      setStep(1);
-      setTimer(300);
-      setCanResend(false);
+      const res = await sendClaimOtp(token);
+      if (res.success) {
+        setStep(1);
+        setTimer(300);
+        setCanResend(false);
+      } else {
+        setError(res.error || 'Failed to send verification code. Please try again.');
+      }
     } catch (err: any) {
       console.error('Failed to send OTP:', err);
-      setError(err.message || 'Failed to send verification code. Please try again.');
+      setError('Network error sending verification code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -65,12 +69,15 @@ export default function ClaimOtpForm({ token, cheque }: ClaimOtpFormProps) {
     setError('');
 
     try {
-      await verifyClaimOtp(token, otpCode);
-      // Redirect to payout bank details page
-      router.push(`/claim/${token}/payout`);
+      const res = await verifyClaimOtp(token, otpCode);
+      if (res.success) {
+        router.push(`/claim/${token}/payout`);
+      } else {
+        setError(res.error || 'Verification failed. Please try again.');
+      }
     } catch (err: any) {
       console.error('Verification failed:', err);
-      setError(err.message || 'Verification failed. Please try again.');
+      setError('Network error verifying code. Please try again.');
     } finally {
       setLoading(false);
     }
