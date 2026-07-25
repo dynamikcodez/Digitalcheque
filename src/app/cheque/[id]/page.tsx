@@ -64,6 +64,10 @@ export default async function ChequeTimelinePage({ params }: PageProps) {
       currentStatus = 'funded';
     }
 
+    if (currentStatus === 'settled') {
+      return 'completed';
+    }
+
     const currentIndex = stateOrder.indexOf(currentStatus);
     const stepIndex = stateOrder.indexOf(stepKey === 'funded' ? 'funded' : stepKey);
 
