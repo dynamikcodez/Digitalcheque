@@ -8,7 +8,7 @@ import {
   estimatePaystackTransferFee,
   estimateStampDuty,
 } from '../../lib/fees';
-import { paystack } from '../../lib/paystack';
+import { squad } from '../../lib/squad';
 import { redirect } from 'next/navigation';
 
 export interface CreateChequeInput {
@@ -95,7 +95,7 @@ export async function createCheque(input: CreateChequeInput) {
 }
 
 /**
- * Initializes Paystack Transaction for the total_charged amount and returns the authorization URL
+ * Initializes Squad Transaction for the total_charged amount and returns the checkout URL
  */
 export async function fundCheque(chequeId: string) {
   const user = await getSessionUser();
@@ -118,15 +118,15 @@ export async function fundCheque(chequeId: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const reference = `ch_charge_${cheque.id}_${Date.now()}`;
 
-  // Call Paystack API
-  const paystackSession = await paystack.initializeTransaction(
+  // Call Squad API
+  const squadSession = await squad.initializeTransaction(
     user.email!,
     cheque.totalCharged,
     reference,
     `${appUrl}/cheque/${cheque.id}`
   );
 
-  // Store Paystack reference in DB
+  // Store Squad reference in DB
   await prisma.cheque.update({
     where: { id: chequeId },
     data: {
@@ -134,7 +134,7 @@ export async function fundCheque(chequeId: string) {
     },
   });
 
-  return paystackSession.authorization_url;
+  return squadSession.checkout_url;
 }
 
 /**
