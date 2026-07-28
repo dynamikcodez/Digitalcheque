@@ -18,11 +18,11 @@ export default function FundChequeButton({ chequeId }: FundButtonProps) {
 
     try {
       const authorizationUrl = await fundCheque(chequeId);
-      // Redirect to Paystack checkout portal
+      // Redirect to Squad checkout portal
       window.location.href = authorizationUrl;
     } catch (err: any) {
       console.error('Error initiating funding:', err);
-      setError(err.message || 'Failed to initiate checkout with Paystack. Please try again.');
+      setError(err.message || 'Failed to initiate checkout with Squad Co. Please try again.');
       setLoading(false);
     }
   };
@@ -44,7 +44,7 @@ export default function FundChequeButton({ chequeId }: FundButtonProps) {
         {loading ? (
           <>
             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Redirecting to Paystack Checkout...
+            Redirecting to Squad Co Checkout...
           </>
         ) : (
           <>
