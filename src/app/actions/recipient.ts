@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { prisma } from '../../lib/db';
 import { emailService } from '../../lib/resend';
 import { squad } from '../../lib/squad';
+import { paystack } from '../../lib/paystack';
 
 // Helper to hash the OTP code
 function hashOtp(code: string): string {
@@ -183,13 +184,21 @@ export async function verifyClaimOtp(token: string, otpCode: string) {
 }
 
 /**
- * Returns the list of Nigerian banks supported by Squad
+ * Returns the list of Nigerian banks supported by Squad/Paystack
  */
 export async function getPayoutBanks() {
   try {
+    const settings = await prisma.platformSettings.findUnique({
+      where: { id: 'default' },
+    });
+    const provider = settings?.paymentProvider || 'squad';
+
+    if (provider === 'paystack') {
+      return await paystack.getBanks();
+    }
     return await squad.getBanks();
   } catch (error) {
-    console.error('Failed to get banks from Squad:', error);
+    console.error('Failed to get banks:', error);
     throw new Error('Could not retrieve bank list. Please try again later.');
   }
 }
@@ -199,7 +208,17 @@ export async function getPayoutBanks() {
  */
 export async function resolveBankAccount(accountNumber: string, bankCode: string) {
   try {
-    const data = await squad.resolveAccountNumber(accountNumber, bankCode);
+    const settings = await prisma.platformSettings.findUnique({
+      where: { id: 'default' },
+    });
+    const provider = settings?.paymentProvider || 'squad';
+
+    let data;
+    if (provider === 'paystack') {
+      data = await paystack.resolveAccountNumber(accountNumber, bankCode);
+    } else {
+      data = await squad.resolveAccountNumber(accountNumber, bankCode);
+    }
     return { success: true, data };
   } catch (error: any) {
     console.error('Failed to resolve account number:', error);
@@ -247,15 +266,30 @@ export async function processPayout(
       return { success: false, error: 'You must verify your identity before choosing a payout destination' };
     }
 
-    // 1. Create Squad Transfer Recipient (dummy placeholder for DB schema mapping)
+    // Resolve payment provider settings
+    const settings = await prisma.platformSettings.findUnique({
+      where: { id: 'default' },
+    });
+    const provider = settings?.paymentProvider || 'squad';
+
+    // 1. Create Transfer Recipient
     let recipientCode = '';
     try {
-      const recipient = await squad.createTransferRecipient(
-        accountName,
-        accountNumber,
-        bankCode
-      );
-      recipientCode = recipient.recipient_code;
+      if (provider === 'paystack') {
+        const recipient = await paystack.createTransferRecipient(
+          accountName,
+          accountNumber,
+          bankCode
+        );
+        recipientCode = recipient.recipient_code;
+      } else {
+        const recipient = await squad.createTransferRecipient(
+          accountName,
+          accountNumber,
+          bankCode
+        );
+        recipientCode = recipient.recipient_code;
+      }
     } catch (err: any) {
       console.warn('Failed to create transfer recipient, using mock:', err.message);
       recipientCode = `mock_rec_${Date.now()}`;
@@ -275,7 +309,7 @@ export async function processPayout(
         },
       });
 
-      // 3. Trigger Squad Initiate Transfer
+      // 3. Trigger Initiate Transfer
       let transferCode = '';
       let isMocked = false;
       
@@ -287,16 +321,26 @@ export async function processPayout(
           throw new Error('Using mock recipient');
         }
 
-        const squadTransfer = await squad.initiateTransfer(
-          accountNumber,
-          bankCode,
-          accountName,
-          cheque.amount,
-          transferRef
-        );
-        transferCode = squadTransfer.transfer_reference || `mock_trf_${Date.now()}`;
+        if (provider === 'paystack') {
+          const paystackTransfer = await paystack.initiateTransfer(
+            recipientCode,
+            cheque.amount,
+            transferRef,
+            `Digital Cheque Payout: ₦${cheque.amount}`
+          );
+          transferCode = paystackTransfer.transfer_code || `mock_trf_${Date.now()}`;
+        } else {
+          const squadTransfer = await squad.initiateTransfer(
+            accountNumber,
+            bankCode,
+            accountName,
+            cheque.amount,
+            transferRef
+          );
+          transferCode = squadTransfer.transfer_reference || `mock_trf_${Date.now()}`;
+        }
       } catch (err: any) {
-        console.warn('Failed to initiate transfer on Squad, simulating success:', err.message);
+        console.warn('Failed to initiate transfer on Squad/Paystack, simulating success:', err.message);
         // Fallback: Mock the transfer and settle immediately
         const isTestKey = process.env.SQUAD_SECRET_KEY?.startsWith('sandbox_') || process.env.SQUAD_SECRET_KEY?.startsWith('test_') || !process.env.SQUAD_SECRET_KEY?.startsWith('sk_');
         const isStarterLimit = err.message?.toLowerCase().includes('starter') || err.message?.toLowerCase().includes('third party') || err.message?.toLowerCase().includes('merchant authentication') || err.message?.includes('mock recipient') || err.message?.includes('payout') || err.message?.toLowerCase().includes('eligible');

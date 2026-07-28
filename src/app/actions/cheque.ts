@@ -10,6 +10,7 @@ import {
 } from '../../lib/fees';
 import { headers } from 'next/headers';
 import { squad } from '../../lib/squad';
+import { paystack } from '../../lib/paystack';
 import { redirect } from 'next/navigation';
 
 export interface CreateChequeInput {
@@ -124,15 +125,35 @@ export async function fundCheque(chequeId: string) {
 
   const reference = `ch_charge_${cheque.id}_${Date.now()}`;
 
-  // Call Squad API
-  const squadSession = await squad.initializeTransaction(
-    user.email!,
-    cheque.totalCharged,
-    reference,
-    `${appUrl}/cheque/${cheque.id}`
-  );
+  // Load platform settings to resolve the active payment provider
+  const settings = await prisma.platformSettings.findUnique({
+    where: { id: 'default' },
+  });
+  const provider = settings?.paymentProvider || 'squad';
 
-  // Store Squad reference in DB
+  let checkoutUrl = '';
+
+  if (provider === 'paystack') {
+    // Call Paystack API
+    const paystackSession = await paystack.initializeTransaction(
+      user.email!,
+      cheque.totalCharged,
+      reference,
+      `${appUrl}/cheque/${cheque.id}`
+    );
+    checkoutUrl = paystackSession.authorization_url;
+  } else {
+    // Call Squad API
+    const squadSession = await squad.initializeTransaction(
+      user.email!,
+      cheque.totalCharged,
+      reference,
+      `${appUrl}/cheque/${cheque.id}`
+    );
+    checkoutUrl = squadSession.checkout_url;
+  }
+
+  // Store reference in DB
   await prisma.cheque.update({
     where: { id: chequeId },
     data: {
@@ -140,7 +161,7 @@ export async function fundCheque(chequeId: string) {
     },
   });
 
-  return squadSession.checkout_url;
+  return checkoutUrl;
 }
 
 /**

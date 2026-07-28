@@ -119,6 +119,7 @@ model PlatformSettings {
   id              String   @id @default("default")
   feePercentage   Float    @default(3.0) @map("fee_percentage")
   feeFixed        Float    @default(200.0) @map("fee_fixed")
+  paymentProvider String   @default("squad") @map("payment_provider")
   currencyDefault String   @default("NGN") @map("currency_default")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

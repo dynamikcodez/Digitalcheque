@@ -477,6 +477,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
         <AdminFeeSettingsForm
           initialPercentage={settings.feePercentage}
           initialFixed={settings.feeFixed}
+          initialProvider={settings.paymentProvider}
         />
       );
       break;

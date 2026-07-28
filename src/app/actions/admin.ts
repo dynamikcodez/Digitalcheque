@@ -198,6 +198,7 @@ export async function adminGetPlatformSettings() {
         id: 'default',
         feePercentage: 3.0,
         feeFixed: 200.0,
+        paymentProvider: 'squad',
       },
     });
   }
@@ -206,11 +207,12 @@ export async function adminGetPlatformSettings() {
 }
 
 /**
- * Updates the global fee percentage and fixed fee amount.
+ * Updates the global fee percentage, fixed fee amount, and active payment provider.
  */
 export async function adminUpdatePlatformSettings(data: {
   feePercentage: number;
   feeFixed: number;
+  paymentProvider: string;
 }) {
   await requireAdmin();
 
@@ -219,11 +221,13 @@ export async function adminUpdatePlatformSettings(data: {
     update: {
       feePercentage: data.feePercentage,
       feeFixed: data.feeFixed,
+      paymentProvider: data.paymentProvider,
     },
     create: {
       id: 'default',
       feePercentage: data.feePercentage,
       feeFixed: data.feeFixed,
+      paymentProvider: data.paymentProvider,
     },
   });
 

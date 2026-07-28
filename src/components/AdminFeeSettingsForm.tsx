@@ -7,11 +7,13 @@ import { Settings, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 interface FeeSettingsProps {
   initialPercentage: number;
   initialFixed: number;
+  initialProvider: string;
 }
 
-export default function AdminFeeSettingsForm({ initialPercentage, initialFixed }: FeeSettingsProps) {
+export default function AdminFeeSettingsForm({ initialPercentage, initialFixed, initialProvider }: FeeSettingsProps) {
   const [feePercentage, setFeePercentage] = useState(initialPercentage);
   const [feeFixed, setFeeFixed] = useState(initialFixed);
+  const [paymentProvider, setPaymentProvider] = useState(initialProvider);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -26,11 +28,12 @@ export default function AdminFeeSettingsForm({ initialPercentage, initialFixed }
       await adminUpdatePlatformSettings({
         feePercentage,
         feeFixed,
+        paymentProvider,
       });
       setSuccess(true);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to update fee settings.');
+      setError(err.message || 'Failed to update configurations.');
     } finally {
       setLoading(false);
     }
@@ -40,13 +43,13 @@ export default function AdminFeeSettingsForm({ initialPercentage, initialFixed }
     <div className="bg-card border border-border p-6 rounded-2xl shadow-sm space-y-4 max-w-lg">
       <div className="flex items-center space-x-2 border-b border-border pb-3">
         <Settings className="w-5 h-5 text-primary" />
-        <h3 className="font-bold text-lg">Adjust Platform Fees</h3>
+        <h3 className="font-bold text-lg">Adjust Platform Configurations</h3>
       </div>
 
       {success && (
         <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-400 text-sm rounded-xl p-3 flex items-center space-x-2">
           <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-          <span>Platform fee configurations updated successfully.</span>
+          <span>Platform configurations updated successfully.</span>
         </div>
       )}
 
@@ -90,6 +93,24 @@ export default function AdminFeeSettingsForm({ initialPercentage, initialFixed }
             disabled={loading}
             className="flex h-10 w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="provider" className="text-xs font-semibold uppercase text-muted-foreground">
+            Active Payment Gateway / Provider
+          </label>
+          <select
+            id="provider"
+            required
+            value={paymentProvider}
+            onChange={(e) => setPaymentProvider(e.target.value)}
+            disabled={loading}
+            className="flex h-10 w-full rounded-xl border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="squad">Squad Co</option>
+            <option value="paystack">Paystack</option>
+          </select>
+          <p className="text-4xs text-muted-foreground mt-0.5">Controls which payment gateway is used to fund new cheques and resolve payout transfers.</p>
         </div>
 
         <button
