@@ -24,18 +24,36 @@ export async function POST(request: Request) {
   const hmac = crypto.createHmac('sha512', SQUAD_SECRET_KEY);
   const calculatedSignature = hmac.update(rawBody).digest('hex');
 
-  if (calculatedSignature.toLowerCase() !== signature.toLowerCase()) {
+  const payload = JSON.parse(rawBody);
+  const event = payload.Event || payload.event || payload.event_type;
+
+  // Construct Version 3 pipe-separated string to hash
+  // Format: transaction_reference|virtual_account_number|currency|principal_amount|settled_amount|customer_identifier
+  const transaction_reference = payload.Body?.transaction_reference || payload.transaction_reference || payload.TransactionRef || '';
+  const virtual_account_number = payload.Body?.virtual_account_number || payload.virtual_account_number || '';
+  const currency = payload.Body?.currency || payload.currency || 'NGN';
+  const principal_amount = String(payload.Body?.principal_amount || payload.Body?.amount || payload.principal_amount || payload.amount || '0');
+  const settled_amount = String(payload.Body?.settled_amount || payload.settled_amount || principal_amount || '0');
+  const customer_identifier = payload.Body?.customer_identifier || payload.customer_identifier || '';
+
+  const pipeString = `${transaction_reference}|${virtual_account_number}|${currency}|${principal_amount}|${settled_amount}|${customer_identifier}`;
+  const hmacV3 = crypto.createHmac('sha512', SQUAD_SECRET_KEY);
+  const calculatedSignatureV3 = hmacV3.update(pipeString).digest('hex');
+
+  const isRawMatch = calculatedSignature.toLowerCase() === signature.toLowerCase();
+  const isPipeMatch = calculatedSignatureV3.toLowerCase() === signature.toLowerCase();
+
+  if (!isRawMatch && !isPipeMatch) {
     console.error('[Squad Webhook] Signature mismatch.');
-    console.error('Calculated HMAC:', calculatedSignature.toLowerCase());
+    console.error('Calculated Raw HMAC:', calculatedSignature.toLowerCase());
+    console.error('Calculated Pipe HMAC (V3):', calculatedSignatureV3.toLowerCase());
+    console.error('Calculated Pipe String (V3):', pipeString);
     console.error('Received Header:', signature.toLowerCase());
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  const payload = JSON.parse(rawBody);
-  const event = payload.Event || payload.event;
-  
   // Extract reference
-  const reference = payload.TransactionRef || payload.Body?.transaction_reference;
+  const reference = transaction_reference;
   const eventId = reference || event + '_' + Date.now();
 
   // 3. Idempotency check
@@ -107,6 +125,11 @@ export async function POST(request: Request) {
           });
         });
 
+        // Resolve appUrl from webhook request headers dynamically
+        const host = request.headers.get('host') || 'localhost:3000';
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        const appUrl = `${proto}://${host}`;
+
         // Send claim link email automatically via Resend
         console.log(`Sending claim link email to recipient: ${cheque.recipientEmail}`);
         await emailService.sendClaimLink(
@@ -115,7 +138,8 @@ export async function POST(request: Request) {
           cheque.senderName,
           cheque.amount,
           cheque.message || '',
-          cheque.claimToken
+          cheque.claimToken,
+          appUrl
         );
       }
     }
