@@ -11,15 +11,23 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-squad-signature') || request.headers.get('x-squad-encrypted-body');
 
   if (!signature) {
+    console.error('[Squad Webhook] Signature header (x-squad-signature or x-squad-encrypted-body) is missing.');
     return NextResponse.json({ error: 'Signature header missing' }, { status: 401 });
+  }
+
+  if (!SQUAD_SECRET_KEY) {
+    console.error('[Squad Webhook] SQUAD_SECRET_KEY environment variable is not defined on the server.');
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
   }
 
   // 2. Verify webhook signature
   const hmac = crypto.createHmac('sha512', SQUAD_SECRET_KEY);
   const calculatedSignature = hmac.update(rawBody).digest('hex');
 
-  if (calculatedSignature !== signature) {
-    console.error('Invalid Squad webhook signature');
+  if (calculatedSignature.toLowerCase() !== signature.toLowerCase()) {
+    console.error('[Squad Webhook] Signature mismatch.');
+    console.error('Calculated HMAC:', calculatedSignature.toLowerCase());
+    console.error('Received Header:', signature.toLowerCase());
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
