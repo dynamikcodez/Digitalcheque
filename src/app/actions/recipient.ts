@@ -309,12 +309,14 @@ export async function processPayout(
         }
       }
 
-      // Update Cheque status (settle directly if mocked since no webhook will arrive)
+      // Always settle directly since Squad payout transfers are processed synchronously
+      // and we want to trigger notifications immediately.
       await tx.cheque.update({
         where: { id: cheque.id },
         data: {
-          status: isMocked ? 'settled' : 'destination_selected',
-          claimedAt: isMocked ? new Date() : undefined,
+          status: 'settled',
+          claimedAt: new Date(),
+          settledAt: new Date(),
         },
       });
 
@@ -323,14 +325,27 @@ export async function processPayout(
         data: {
           chequeId: cheque.id,
           paystackTransferCode: transferCode,
-          status: isMocked ? 'success' : 'pending',
+          status: 'success',
           amount: cheque.amount,
           fee: 0,
+          completedAt: new Date(),
         },
       });
 
       return transferRow;
     });
+
+    // Send settled email notification to sender
+    try {
+      await emailService.sendSettledNotification(
+        cheque.id,
+        cheque.senderContact,
+        cheque.recipientEmail,
+        cheque.amount
+      );
+    } catch (emailErr) {
+      console.error('Failed to send settled email notification:', emailErr);
+    }
 
     return { success: true, transferCode: transferResult.paystackTransferCode };
   } catch (error: any) {
