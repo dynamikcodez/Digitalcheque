@@ -206,7 +206,7 @@ export async function resolveBankAccount(accountNumber: string, bankCode: string
     
     // Developer Sandbox Bypass for Squad Test Mode Limits
     const isTestKey = process.env.SQUAD_SECRET_KEY?.startsWith('sandbox_') || process.env.SQUAD_SECRET_KEY?.startsWith('test_') || !process.env.SQUAD_SECRET_KEY?.startsWith('sk_');
-    const isLimitError = error.message?.toLowerCase().includes('limit') || error.message?.toLowerCase().includes('exceeded') || error.message?.toLowerCase().includes('starter') || error.message?.toLowerCase().includes('merchant authentication');
+    const isLimitError = error.message?.toLowerCase().includes('limit') || error.message?.toLowerCase().includes('exceeded') || error.message?.toLowerCase().includes('starter') || error.message?.toLowerCase().includes('merchant authentication') || error.message?.toLowerCase().includes('eligible');
     
     if (isTestKey && isLimitError) {
       console.warn('Squad resolve limit or auth error hit in Test Mode. Bypassing and returning mock name.');
@@ -299,7 +299,7 @@ export async function processPayout(
         console.warn('Failed to initiate transfer on Squad, simulating success:', err.message);
         // Fallback: Mock the transfer and settle immediately
         const isTestKey = process.env.SQUAD_SECRET_KEY?.startsWith('sandbox_') || process.env.SQUAD_SECRET_KEY?.startsWith('test_') || !process.env.SQUAD_SECRET_KEY?.startsWith('sk_');
-        const isStarterLimit = err.message?.toLowerCase().includes('starter') || err.message?.toLowerCase().includes('third party') || err.message?.toLowerCase().includes('merchant authentication') || err.message?.includes('mock recipient') || err.message?.includes('payout');
+        const isStarterLimit = err.message?.toLowerCase().includes('starter') || err.message?.toLowerCase().includes('third party') || err.message?.toLowerCase().includes('merchant authentication') || err.message?.includes('mock recipient') || err.message?.includes('payout') || err.message?.toLowerCase().includes('eligible');
         
         if (isTestKey || isStarterLimit) {
           transferCode = `mock_trf_${Date.now()}`;
