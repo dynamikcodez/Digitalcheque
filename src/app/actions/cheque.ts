@@ -213,6 +213,11 @@ export async function simulateFundingSuccess(chequeId: string) {
   });
 
   // Send claim link email automatically via Resend
+  const headersList = await headers();
+  const host = headersList.get('host') || 'localhost:3000';
+  const proto = headersList.get('x-forwarded-proto') || 'https';
+  const appUrl = `${proto}://${host}`;
+
   const { emailService } = await import('../../lib/resend');
   await emailService.sendClaimLink(
     cheque.id,
@@ -220,7 +225,8 @@ export async function simulateFundingSuccess(chequeId: string) {
     cheque.senderName,
     cheque.amount,
     cheque.message || '',
-    cheque.claimToken
+    cheque.claimToken,
+    appUrl
   );
 
   return updatedCheque;

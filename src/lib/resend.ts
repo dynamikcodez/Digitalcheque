@@ -37,9 +37,11 @@ export const emailService = {
     senderName: string,
     amount: number,
     message: string,
-    claimToken: string
+    claimToken: string,
+    appUrl?: string
   ): Promise<boolean> {
-    const claimUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/claim/${claimToken}`;
+    const baseUrl = appUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const claimUrl = `${baseUrl}/claim/${claimToken}`;
     
     try {
       await resend.emails.send({
