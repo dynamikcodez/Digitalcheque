@@ -94,7 +94,7 @@ export default async function ClaimPage({ params }: PageProps) {
         {/* Footer */}
         <footer className="border-t border-border py-6 bg-card/20">
           <div className="mx-auto max-w-7xl px-4 text-center text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Digital Cheque. Securely powered by Paystack.
+            &copy; {new Date().getFullYear()} Digital Cheque. Securely powered by Squad Co.
           </div>
         </footer>
       </div>

@@ -61,7 +61,7 @@ export default function SimulatePaymentButton({ chequeId }: SimulateButtonProps)
         )}
       </button>
       <p className="text-4xs text-muted-foreground text-center leading-normal">
-        Use this if your local network blocks ngrok or prevents Paystack from reaching localhost.
+        Use this if your local network blocks ngrok or prevents Squad Co from reaching localhost.
       </p>
     </div>
   );

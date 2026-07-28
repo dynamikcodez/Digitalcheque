@@ -44,7 +44,7 @@ export default async function ChequeTimelinePage({ params }: PageProps) {
   // Map state machine states to visual timeline steps
   const steps = [
     { label: 'Cheque Created', desc: 'Draft details entered by sender.', key: 'draft' },
-    { label: 'Funded & Reserved', desc: 'Funds successfully escrowed via Paystack.', key: 'funded' },
+    { label: 'Funded & Reserved', desc: 'Funds successfully escrowed via Squad Co.', key: 'funded' },
     { label: 'Recipient Notified', desc: 'Claim link sent to recipient email.', key: 'recipient_notified' },
     { label: 'Recipient Identity Verified', desc: 'Recipient verified their email via OTP.', key: 'recipient_verified' },
     { label: 'Bank Payout Selected', desc: 'Recipient resolved bank account and created transfer.', key: 'destination_selected' },
@@ -244,7 +244,7 @@ export default async function ChequeTimelinePage({ params }: PageProps) {
             {/* Payout & Transfer processing details */}
             {activeTransfer && (
               <div className="bg-card border border-border p-6 rounded-2xl shadow-sm space-y-4">
-                <h3 className="font-bold text-lg border-b border-border pb-3">Paystack Transfer Payout</h3>
+                <h3 className="font-bold text-lg border-b border-border pb-3">Squad Co Transfer Payout</h3>
                 <div className="space-y-2.5 text-xs text-muted-foreground">
                   <div className="flex justify-between">
                     <span>Transfer Code</span>

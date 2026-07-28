@@ -8,6 +8,7 @@ import {
   estimatePaystackTransferFee,
   estimateStampDuty,
 } from '../../lib/fees';
+import { headers } from 'next/headers';
 import { squad } from '../../lib/squad';
 import { redirect } from 'next/navigation';
 
@@ -115,7 +116,12 @@ export async function fundCheque(chequeId: string) {
     throw new Error('Cheque is already funded or processed');
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  // Dynamically resolve application URL from incoming request headers
+  const headersList = await headers();
+  const host = headersList.get('host') || 'localhost:3000';
+  const proto = headersList.get('x-forwarded-proto') || 'https';
+  const appUrl = `${proto}://${host}`;
+
   const reference = `ch_charge_${cheque.id}_${Date.now()}`;
 
   // Call Squad API
