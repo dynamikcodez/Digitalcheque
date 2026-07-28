@@ -3,6 +3,7 @@ import { getSessionUser } from '../../../lib/supabase/server';
 import { prisma } from '../../../lib/db';
 import Navbar from '../../../components/Navbar';
 import CancelChequeButton from '../../../components/CancelChequeButton';
+import SimulatePaymentButton from '../../../components/SimulatePaymentButton';
 import { redirect } from 'next/navigation';
 import { ArrowLeft, Clock, Check, Ban, AlertTriangle, ExternalLink, Calendar, Mail, FileText, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -282,6 +283,11 @@ export default async function ChequeTimelinePage({ params }: PageProps) {
                   )}
                   {/* Sender can cancel cheque before it gets verified/settled */}
                   <CancelChequeButton chequeId={cheque.id} />
+
+                  {/* Dev Sandbox simulation tool */}
+                  {cheque.status === 'draft' && (
+                    <SimulatePaymentButton chequeId={cheque.id} />
+                  )}
                 </div>
               </div>
             )}
